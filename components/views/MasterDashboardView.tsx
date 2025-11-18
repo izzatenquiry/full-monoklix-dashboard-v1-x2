@@ -4,6 +4,7 @@ import Spinner from '../common/Spinner';
 import ImageUpload from '../common/ImageUpload';
 import { type User, type Language } from '../../types';
 import { getTranslations } from '../../services/translations';
+import { cropImageToAspectRatio } from '../../services/imageService';
 
 // --- CONFIG ---
 const SERVERS = Array.from({ length: 10 }, (_, i) => ({
@@ -195,6 +196,16 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
                 const validImage = referenceImages[0] || referenceImages[1];
                 if (!validImage) throw new Error('No reference image provided');
 
+                // Step 0: Crop to 9:16 for Veo Portrait
+                appendLog(server.id, 'Cropping image to 9:16...');
+                let croppedBase64 = validImage.base64;
+                try {
+                    croppedBase64 = await cropImageToAspectRatio(validImage.base64, '9:16');
+                } catch (cropError) {
+                    appendLog(server.id, 'Cropping failed, using original image.');
+                    console.error(cropError);
+                }
+
                 // Step 1: Upload to Veo
                 updateServerState(server.id, { status: 'uploading' });
                 appendLog(server.id, 'Uploading image to Veo...');
@@ -204,7 +215,7 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
                     body: JSON.stringify({
                          imageInput: { 
-                             rawImageBytes: validImage.base64, 
+                             rawImageBytes: croppedBase64, 
                              mimeType: validImage.mimeType,
                              isUserUploaded: true,
                              aspectRatio: 'IMAGE_ASPECT_RATIO_PORTRAIT'
