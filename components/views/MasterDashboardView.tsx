@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { ServerIcon, ActivityIcon, AlertTriangleIcon, CheckCircleIcon, RefreshCwIcon, UploadIcon, VideoIcon, ImageIcon, DownloadIcon, XIcon } from '../Icons';
+
+import React, { useState, useCallback } from 'react';
+import { ActivityIcon, AlertTriangleIcon, DownloadIcon, XIcon, ImageIcon, RefreshCwIcon, VideoIcon } from '../Icons';
 import Spinner from '../common/Spinner';
 import ImageUpload from '../common/ImageUpload';
 import { type User, type Language } from '../../types';
-import { getTranslations } from '../../services/translations';
 import { cropImageToAspectRatio } from '../../services/imageService';
 
 // --- CONFIG ---
@@ -31,6 +31,11 @@ interface MasterDashboardViewProps {
     language: Language;
 }
 
+const PRESET_PROMPTS = {
+    'English': "A cinematic shot of a futuristic city with flying cars at sunset, cyberpunk aesthetic, highly detailed, 8k resolution.",
+    'Bahasa Malaysia': "Paparan sinematik bandar futuristik dengan kereta terbang pada waktu matahari terbenam, estetik cyberpunk, sangat terperinci, resolusi 8k."
+};
+
 // Helper to safely parse JSON
 const safeJson = async (res: Response) => {
     try {
@@ -51,8 +56,9 @@ const downloadContent = (url: string, type: 'image' | 'video', filenamePrefix: s
 };
 
 const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, language }) => {
-    const [prompt, setPrompt] = useState('A futuristic city with flying cars at sunset, cyberpunk style, highly detailed.');
-    // Changed to allow 2 images
+    const [promptLanguage, setPromptLanguage] = useState<'English' | 'Bahasa Malaysia'>('English');
+    const [prompt, setPrompt] = useState(PRESET_PROMPTS['English']);
+    
     const [referenceImages, setReferenceImages] = useState<({ base64: string, mimeType: string } | null)[]>([null, null]);
     const [uploadKeys, setUploadKeys] = useState([Date.now(), Date.now() + 1]);
     const [previewItem, setPreviewItem] = useState<{ type: 'image' | 'video', url: string } | null>(null);
@@ -77,6 +83,12 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
                 logs: [...prev[serverId].logs, `[${new Date().toLocaleTimeString()}] ${message}`] 
             }
         }));
+    };
+
+    const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const lang = e.target.value as 'English' | 'Bahasa Malaysia';
+        setPromptLanguage(lang);
+        setPrompt(PRESET_PROMPTS[lang]);
     };
 
     const handleImageUpdate = (index: number, data: { base64: string, mimeType: string } | null) => {
@@ -274,16 +286,13 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
                      const isSuccess = op.done || ['MEDIA_GENERATION_STATUS_COMPLETED', 'MEDIA_GENERATION_STATUS_SUCCESS', 'MEDIA_GENERATION_STATUS_SUCCESSFUL'].includes(op.status);
 
                      if (isSuccess) {
-                         // Robust URL extraction
+                         // Robust URL extraction based on actual server logs
                          finalUrl = op.operation?.metadata?.video?.fifeUrl
-                                 || op.operation?.response?.generatedVideos?.[0]?.video?.fifeUrl
-                                 || op.video?.fifeUrl 
-                                 || op.result?.generatedVideo?.[0]?.fifeUrl
-                                 || op.result?.generatedVideos?.[0]?.video?.fifeUrl
-                                 || op.response?.generatedVideos?.[0]?.video?.fifeUrl
                                  || op.metadata?.video?.fifeUrl
-                                 || op.result?.response?.generatedVideos?.[0]?.video?.fifeUrl
-                                 || op.operation?.response?.generatedVideo?.fifeUrl; 
+                                 || op.result?.generatedVideo?.[0]?.fifeUrl
+                                 || op.result?.generatedVideos?.[0]?.fifeUrl
+                                 || op.video?.fifeUrl 
+                                 || op.fifeUrl;
                          
                          if (finalUrl) break;
                          else appendLog(server.id, 'Status success but URL not found yet...');
@@ -384,13 +393,26 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
                         </div>
                     </div>
                     <div className="lg:col-span-2 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Prompt Language</label>
+                                <select 
+                                    value={promptLanguage} 
+                                    onChange={handleLanguageChange}
+                                    className="w-full p-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                >
+                                    <option value="English">English</option>
+                                    <option value="Bahasa Malaysia">Bahasa Malaysia</option>
+                                </select>
+                            </div>
+                        </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Test Prompt</label>
-                            <input 
-                                type="text" 
+                            <textarea 
                                 value={prompt} 
                                 onChange={e => setPrompt(e.target.value)} 
-                                className="w-full p-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                rows={3}
+                                className="w-full p-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none resize-none"
                             />
                         </div>
                         <div className="flex gap-4">
@@ -485,11 +507,19 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
                                         </button>
                                         <button 
                                             onClick={() => runTestForServer(server, 'I2I')} 
-                                            disabled={!hasRefImages}
+                                            disabled={!referenceImages.some(img => img !== null)}
                                             className="text-[10px] font-semibold text-purple-600 hover:underline disabled:opacity-50"
                                             title="Retry Image-to-Image"
                                         >
                                             I2I
+                                        </button>
+                                        <button 
+                                            onClick={() => runTestForServer(server, 'I2V')} 
+                                            disabled={!referenceImages.some(img => img !== null)}
+                                            className="text-[10px] font-semibold text-pink-600 hover:underline disabled:opacity-50"
+                                            title="Retry Image-to-Video"
+                                        >
+                                            I2V
                                         </button>
                                     </div>
                                 </div>
