@@ -19,7 +19,7 @@ const getNavItems = (language: Language): NavItem[] => {
         { id: 'ai-prompt-library-suite', label: T.promptLibrary, section: 'free', icon: LibraryIcon },
         { id: 'gallery', label: T.imageGallery, section: 'free', icon: GalleryIcon },  
         { id: 'support-group', label: T.supportGroup, section: 'bottom', icon: WhatsAppIcon, isExternal: true, url: 'https://chat.whatsapp.com/Hk0uyuxk1QW820oxsRaPlW' },
-        { id: 'master-dashboard', label: "Master Dashboard", section: 'admin', icon: ActivityIcon, roles: ['admin'] },
+        { id: 'master-dashboard', label: "Server Status", section: 'admin', icon: ActivityIcon, roles: ['admin'] },
         { id: 'settings', label: T.settings, section: 'bottom', icon: SettingsIcon, roles: ['admin', 'user'] },
         { id: 'logout', label: T.logout, section: 'bottom', icon: LogoutIcon }
     ];

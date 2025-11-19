@@ -493,7 +493,7 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
             <div className="flex flex-col gap-2">
                 <h1 className="text-2xl font-bold flex items-center gap-2 text-neutral-900 dark:text-white">
                     <ActivityIcon className="w-8 h-8 text-primary-500" />
-                    Master Dashboard <span className="text-sm font-normal text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded">Admin Only</span>
+                    Server Status <span className="text-sm font-normal text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded">Admin Only</span>
                 </h1>
                 <div className="flex justify-between items-end">
                     <p className="text-neutral-500 dark:text-neutral-400">Monitor and test connectivity for all backend servers simultaneously.</p>
