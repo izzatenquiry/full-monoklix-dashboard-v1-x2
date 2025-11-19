@@ -185,6 +185,20 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
         }));
     };
 
+    const handleResetServer = (serverId: string) => {
+        setServerStates(prev => ({
+            ...prev,
+            [serverId]: { status: 'idle', logs: [], resultUrl: undefined, resultType: undefined, error: undefined, duration: undefined }
+        }));
+    };
+  
+    const handleCreateNewServer = (serverId: string) => {
+         setServerStates(prev => ({
+            ...prev,
+            [serverId]: { ...prev[serverId], status: 'idle', resultUrl: undefined, resultType: undefined, error: undefined }
+        }));
+    };
+
     const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const lang = e.target.value as 'English' | 'Bahasa Malaysia';
         setPromptLanguage(lang);
@@ -403,8 +417,21 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
             ? SERVERS 
             : SERVERS.filter(s => s.id === targetServerId);
 
-        // Run in parallel
-        await Promise.all(serversToTest.map(server => runTestForServer(server, type)));
+        // Run servers with staggered delays to prevent network congestion (500ms between each)
+        const promises: Promise<void>[] = [];
+        for (let i = 0; i < serversToTest.length; i++) {
+            // Stagger logic: Delay each subsequent request
+            const delay = i * 500; 
+            const p = new Promise<void>(resolve => {
+                setTimeout(async () => {
+                    await runTestForServer(serversToTest[i], type);
+                    resolve();
+                }, delay);
+            });
+            promises.push(p);
+        }
+        
+        await Promise.all(promises);
         
         isProcessingRef.current = false;
 
@@ -693,6 +720,22 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
                                     {state.logs.length === 0 ? <span className="opacity-50">Waiting for logs...</span> : state.logs.map((log, i) => (
                                         <div key={i}>{log}</div>
                                     ))}
+                                </div>
+
+                                {/* Footer Controls: Reset / Create New */}
+                                <div className="flex border-t border-neutral-200 dark:border-neutral-800 divide-x divide-neutral-200 dark:divide-neutral-800">
+                                    <button 
+                                        onClick={() => handleResetServer(server.id)} 
+                                        className="flex-1 py-2 text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                                    >
+                                        Reset
+                                    </button>
+                                    <button 
+                                        onClick={() => handleCreateNewServer(server.id)} 
+                                        className="flex-1 py-2 text-[10px] font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                                    >
+                                        Create New
+                                    </button>
                                 </div>
                             </div>
                         );
